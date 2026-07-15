@@ -1,7 +1,7 @@
 # 基于Hadoop的游戏平台玩家行为分析与防沉迷系统
 
 > **课程设计项目** | 2026-06-12  
-> Hadoop 3.3.6 + Flume 1.11 + Kafka 3.6.2 + Spark 3.1 + Hive 3.1 + Doris 2.0.14 + FineBI 6.0
+> Hadoop 3.3.6 + Flume 1.11 + Kafka 3.6.2 + Spark 3.1 + Hive 3.1 + Doris 2.0.14
 
 ---
 
@@ -13,7 +13,7 @@
 - 📊 **实时数据采集:** Flume 采集玩家行为日志 → Kafka 流式分发 → HDFS 数据湖
 - 🔍 **智能风险标注:** Spark ETL 计算 4 级防沉迷风险标签（正常/预警/违规/重度）
 - ⚡ **秒级 OLAP 查询:** Apache Doris 支撑毫秒级多维聚合
-- 📈 **可视化大屏:** FineBI 8 模块监控大屏，含联动钻取分析
+- 📈 **可视化大屏:** Vue.js + Spring Boot 自建 8 模块监控大屏，含联动钻取分析
 - 🤖 **自动化运维:** 一键启停、ETL 调度、数据校验、定时告警
 
 ---
@@ -22,32 +22,32 @@
 
 ### 1. 启动所有服务
 ```bash
-sh manage.sh start        # HDFS + Kafka + Flume
-sh doris/doris_manage.sh start   # Doris FE + BE
+sh scripts/manage.sh start                    # HDFS + Kafka + Flume
+sh config/doris_manage.sh start               # Doris FE + BE
 ```
 
 ### 2. 查看服务状态
 ```bash
-sh manage.sh status
-sh doris/doris_manage.sh status
+sh scripts/manage.sh status
+sh config/doris_manage.sh status
 ```
 
 ### 3. 生成测试数据并运行 ETL
 ```bash
-python3 generate_game_logs.py 200 0.1              # 生成 200 条测试日志
-sh manage.sh etl-local 20260610                    # Spark ETL (ODS→DWD)
-sh doris/doris_manage.sh sync 20260610            # Hive→Doris 同步
+python3 tools/generate_game_logs.py 200 0.1               # 生成 200 条测试日志
+sh scripts/manage.sh etl-local 20260610                   # Spark ETL (ODS→DWD)
+sh config/doris_manage.sh sync 20260610                   # Hive→Doris 同步
 ```
 
 ### 4. 数据校验
 ```bash
-sh verify_monitor.sh full 20260610                 # 全链路健康检查
-python3 run_system_tests.py --full                  # 运行系统测试
+sh scripts/verify_monitor.sh full 20260610                # 全链路健康检查
+python3 tools/run_system_tests.py --full                   # 运行系统测试
 ```
 
 ### 5. 启动定时监控
 ```bash
-sh verify_monitor.sh schedule                       # 每5分钟自动检查
+sh scripts/verify_monitor.sh schedule                      # 每5分钟自动检查
 ```
 
 ---
@@ -55,48 +55,72 @@ sh verify_monitor.sh schedule                       # 每5分钟自动检查
 ## 项目结构
 
 ```
-game_player_anti_addiction/
+game-player-anti-addiction/
 │
-├── 📄 README.md                           # 本文件
-├── 📄 PROJECT_COMPLETION_REPORT.md        # 项目完成报告
-├── 📄 COURSE_DESIGN_REPORT.md             # 课程设计报告 (含架构/设计/测试)
+├── README.md
+├── pom.xml                                # Maven 构建配置
 │
-├── 🔧 manage.sh                           # 服务管理: Hadoop/Kafka/Flume 启停
-├── 🔧 env.sh                              # 环境变量
-├── 🔧 start_all.sh                        # 一键启动
-├── 🔧 verify_monitor.sh                   # 数据校验 + 健康监控 + 定时调度
-├── 🐍 generate_game_logs.py               # 模拟玩家行为日志生成器
-├── 🐍 run_system_tests.py                 # 系统测试 (正常/边界/异常/一致性)
+├── src/                                   # Spring Boot 后端
+│   └── main/
+│       ├── java/com/game/antidote/
+│       │   ├── AntiAddictionApplication.java
+│       │   ├── common/                    # 统一返回结果
+│       │   ├── config/                    # Web/Scheduled 配置
+│       │   ├── controller/                # Dashboard API 控制器
+│       │   ├── entity/                    # 8 个数据实体
+│       │   ├── mapper/                    # MyBatis 映射接口
+│       │   └── service/                   # 业务逻辑层
+│       └── resources/
+│           ├── application.yml            # 应用配置
+│           ├── mapper/                    # MyBatis XML
+│           └── static/                    # 大屏前端构建产物
 │
-├── 📁 doris/                              # Apache Doris
-│   ├── doris_init.sql                     #   建库建表 DDL + 动态分区
-│   ├── doris_ddl_sync_query.sql           #   DDL + Stream Load 同步 SQL
-│   ├── doris_manage.sh                    #   FE/BE 启停 + 数据同步
-│   ├── deploy_doris.sh                    #   部署脚本
-│   └── setup_doris.sh                     #   配置脚本
+├── dashboard/                             # Vue.js 大屏前端源码
+│   ├── src/
+│   │   ├── views/Dashboard.vue            # 监控大屏主页面
+│   │   ├── components/                    # KpiCard/BaseEchart/BaseTable 等
+│   │   └── api/                           # 后端 API 调用
+│   ├── package.json
+│   └── vite.config.js
 │
-├── 📁 finebi/                             # FineBI 可视化
-│   ├── FINEBI_OPERATION_CHECKLIST.md      #   数据集+大屏配置清单
-│   ├── FINEBI_DASHBOARD_STEP_BY_STEP.md   #   ★ 大屏分步制作指南 (23步)
-│   ├── FINEBI_DEPLOYMENT_GUIDE.md         #   部署指南
-│   └── DASHBOARD_DESIGN.md                #   大屏设计方案
+├── etl/                                   # ETL 数据处理
+│   ├── spark/etl_anti_addiction.py        # PySpark 清洗+风险标注
+│   ├── flume/                             # Flume 采集配置
+│   │   ├── flume.conf                     # 标准 Agent 配置
+│   │   ├── game_flume.conf                # 游戏日志采集配置
+│   │   ├── start_flume.sh                 # 启动脚本
+│   │   └── test_pipeline.sh               # 管道测试
+│   └── lightweight_pipeline.py            # 轻量数据处理管线
 │
-├── 📁 spark/                              # Spark ETL
-│   ├── etl_anti_addiction.py              #   PySpark 清洗+风险标注核心代码
-│   └── etl_output_*.log                   #   运行日志
+├── sql/                                   # 数据库定义与查询
+│   ├── hive_ddl.sql                       # Hive ODS/DWD/ADS 三层 DDL
+│   ├── doris_init.sql                     # Doris 建库建表 + 动态分区
+│   ├── doris_ddl_sync_query.sql           # DDL + Stream Load 同步
+│   └── dashboard_queries.sql              # 大屏 8 组 API 查询 SQL
 │
-├── 📁 hive/                               # Hive 数据仓库
-│   ├── hive_ddl.sql                       #   ODS/DWD/ADS 三层建表 DDL
-│   └── conf/                              #   配置文件
+├── config/                                # 组件部署与配置
+│   ├── hive-site.xml                      # Hive 配置
+│   ├── deploy_doris.sh                    # Doris 部署脚本
+│   ├── doris_manage.sh                    # Doris FE/BE 管理
+│   └── setup_doris.sh                     # Doris 初始化
 │
-├── 📁 03_flume_config/                    # Flume 配置
-│   ├── game_flume.conf                    #   Agent 配置 (Taildir→Kafka+HDFS)
-│   ├── start_flume.sh                     #   启动脚本
-│   └── test_pipeline.sh                   #   管道测试
+├── scripts/                               # 运维管理脚本
+│   ├── manage.sh                          # 服务管理 (HDFS/Kafka/Flume)
+│   ├── start_all.sh                       # 一键启动所有服务
+│   ├── auto_startup.sh                    # 开机自启
+│   ├── auto_pipeline.sh                   # 自动 ETL 调度
+│   ├── verify_monitor.sh                  # 数据校验 + 健康监控
+│   ├── init_doris_data.sh                 # Doris 数据初始化
+│   └── env.sh                             # 环境变量
 │
-├── 📁 logs/                               # 应用日志 (Flume source)
-├── 📁 reports/                            # 报告输出目录
-└── 📁 test_output/                        # 测试输出目录
+├── tools/                                 # Python 工具集
+│   ├── generate_game_logs.py              # 模拟玩家行为日志生成器
+│   ├── generate_doris_test_data.py        # Doris 测试数据生成
+│   └── run_system_tests.py                # 系统测试 (正常/边界/异常/一致性)
+│
+└── docs/                                  # 文档与报告
+    ├── 实验报告.docx                       # 课程设计报告
+    └── reports/                           # 测试与健康检查报告
 ```
 
 ---
@@ -116,22 +140,13 @@ generate_game_logs.py  →  Flume  →  Kafka  →  HDFS (ODS)
                                          ↓
                                    Doris OLAP
                                          ↓
-                              FineBI 可视化大屏
+                    Spring Boot API → Vue.js 可视化大屏
 ```
 
 ## 当前数据量
 - **Doris DWD:** 8,412 行 | 1,975 位玩家
 - **风险分布:** 正常 85.7% | 预警 1.2% | 违规 11.7% | 重度 1.4%
 - **查询性能:** 62-112ms (KPI 聚合)
-
-## 文档索引
-| 文档 | 用途 |
-|------|------|
-| `PROJECT_COMPLETION_REPORT.md` | 项目状态、服务拓扑、配置修复记录 |
-| `COURSE_DESIGN_REPORT.md` | 完整课程设计报告 (需求→设计→测试→总结) |
-| `finebi/FINEBI_DASHBOARD_STEP_BY_STEP.md` | FineBI 大屏分步操作指南 |
-| `finebi/FINEBI_OPERATION_CHECKLIST.md` | 数据集 SQL + 大屏配置速查 |
-| `finebi/DASHBOARD_DESIGN.md` | 大屏架构设计 + 配色 + 布局 |
 
 ---
 
