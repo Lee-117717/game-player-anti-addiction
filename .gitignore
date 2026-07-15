@@ -1,0 +1,51 @@
+# IDE & Editor
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Node.js
+node_modules/
+dist/
+npm-debug.log*
+
+# Logs
+*.log
+logs/
+
+# Runtime
+derby.log
+hs_err_pid*.log
+metastore_db/
+
+# Hadoop
+hadoop-data/
+namenode/
+datanode/
+
+# Spark
+spark-warehouse/
+
+# Test & Generated Data
+test_output/
+data/
+archive/
+
+# Environment
+.env
+.env.local

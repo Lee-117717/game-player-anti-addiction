@@ -1,0 +1,78 @@
+# ============================================================================
+# 游戏防沉迷监控大屏 - SpringBoot 配置
+# 数据源: Apache Doris 2.0.14 (MySQL协议, 端口9030)
+# ============================================================================
+
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: anti-addiction-dashboard
+
+  # 静态资源配置 (big_screen.html)
+  mvc:
+    static-path-pattern: /**
+  resources:
+    static-locations: classpath:/static/
+
+  # 数据源 (Druid连接池 → Apache Doris)
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      # 基础连接配置 (Doris MySQL协议)
+      url: jdbc:mysql://127.0.0.1:9030/game_anti_addiction?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+      username: root
+      password:
+      driver-class-name: com.mysql.jdbc.Driver
+
+      # 连接池配置 (内存受限, 控制连接数)
+      initial-size: 2
+      min-idle: 1
+      max-active: 4
+      max-wait: 10000
+      time-between-eviction-runs-millis: 30000
+      min-evictable-idle-time-millis: 60000
+
+      # 连接校验
+      validation-query: SELECT 1
+      test-on-borrow: false
+      test-on-return: false
+      test-while-idle: true
+
+      # Druid监控
+      filters: stat
+      web-stat-filter:
+        enabled: true
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin123
+
+  # Jackson JSON配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.game.antidote.entity
+  configuration:
+    # 自动映射下划线字段到驼峰属性: total_active → totalActive
+    map-underscore-to-camel-case: true
+    # 仪表盘禁用缓存以获取实时数据
+    cache-enabled: false
+    # 开发环境打印SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 日志
+logging:
+  level:
+    com.game.antidote: DEBUG
+    com.baomidou: WARN
+    com.alibaba.druid: WARN
